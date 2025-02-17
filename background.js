@@ -1,51 +1,105 @@
+
 console.log('[CUCHD Extension] Background script started.');
-setInterval(() => {
-  console.log('[CUCHD Extension] Sending keep-alive request...');
-  fetch('https://students.cuchd.in/dashboard.aspx', {
-    credentials: 'include'
-  }).then(response => {
-    if (response.ok) {
-      console.log('[CUCHD Extension] Keep-alive request successful.');
-    } else {
-      console.error('[CUCHD Extension] Keep-alive request failed:', response.status);
-    }
-  }).catch((error) => {
-    console.error('[CUCHD Extension] Keep-alive error:', error);
-  });
-}, 300000);
+
+let isCookieProcessing = false;
 
 chrome.cookies.onChanged.addListener((changeInfo) => {
-  if (changeInfo.cookie.name === 'UIMSLoginCookie' && !changeInfo.removed) {
-    console.log('[CUCHD Extension] Detected UIMSLoginCookie update.');
-    chrome.storage.local.set({ UIMSLoginCookie: changeInfo.cookie.value }, () => {
-      console.log('[CUCHD Extension] Saved UIMSLoginCookie to storage.');
-    });
-  }
+    if (changeInfo.cookie.name === 'UIMSLoginCookie' && !changeInfo.removed) {
+        console.log('[CUCHD] Detected valid UIMSLoginCookie');
+        if (changeInfo.cookie.domain === 'students.cuchd.in' &&
+            changeInfo.cookie.path === '/') {
+            chrome.storage.local.get(['latestCookie'], (result) => {
+                const existingCookie = result.latestCookie;
+
+                if (!existingCookie ||
+                    new Date(changeInfo.cookie.expirationDate * 1000) >
+                    new Date(existingCookie.expirationDate * 1000)) {
+
+                    const cookieData = {
+                        value: changeInfo.cookie.value,
+                        expirationDate: changeInfo.cookie.expirationDate,
+                        secure: changeInfo.cookie.secure,
+                        httpOnly: changeInfo.cookie.httpOnly
+                    };
+
+                    chrome.storage.local.set({ latestCookie: cookieData }, () => {
+                        console.log('[CUCHD] Stored latest cookie:', {
+                            value: cookieData.value.substr(0, 10) + '...',
+                            expires: new Date(cookieData.expirationDate * 1000).toISOString()
+                        });
+                    });
+                }
+            });
+        }
+    }
 });
-chrome.storage.local.get(['UIMSLoginCookie'], (data) => {
-  if (data.UIMSLoginCookie) {
-    console.log('[CUCHD Extension] Found stored UIMSLoginCookie. Injecting...');
-    chrome.cookies.set({
-      url: 'https://students.cuchd.in/',
-      name: 'UIMSLoginCookie',
-      value: data.UIMSLoginCookie,
-      expirationDate: new Date('2025-02-20').getTime() / 1000
-    }, (cookie) => {
-      if (cookie) {
-        console.log('[CUCHD Extension] Cookie injected successfully.');
-      } else {
-        console.error('[CUCHD Extension] Failed to inject cookie.');
-      }
-    });
-  } else {
-    console.log('[CUCHD Extension] No stored UIMSLoginCookie found.');
-  }
+async function injectSessionCookies() {
+    const { latestCookie } = await chrome.storage.local.get(['latestCookie']);
+
+    if (!latestCookie) return;
+
+    try {
+        await chrome.cookies.remove({
+            url: 'https://students.cuchd.in/',
+            name: 'UIMSLoginCookie'
+        });
+
+        await chrome.cookies.set({
+            url: 'https://students.cuchd.in/',
+            name: 'UIMSLoginCookie',
+            value: latestCookie.value,
+            expirationDate: latestCookie.expirationDate,
+            secure: latestCookie.secure,
+            httpOnly: latestCookie.httpOnly,
+            path: '/'
+        });
+
+        console.log('[CUCHD] Successfully injected latest cookie');
+    } catch (error) {
+        console.error('[CUCHD] Cookie injection failed:', error);
+    }
+}
+
+chrome.webNavigation.onCompleted.addListener((details) => {
+    if (details.url.startsWith('https://students.cuchd.in/')) {
+        injectSessionCookies();
+    }
 });
 
-chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
-    chrome.tabs.query({ url: 'https://students.cuchd.in/*' }, (tabs) => {
-      if (tabs.length === 0) {
-        chrome.tabs.create({ url: 'https://students.cuchd.in/', active: false });
-      }
-    });
-  });
+chrome.alarms.create('sessionMaintenance', { periodInMinutes: 4.5 });
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+    if (alarm.name === 'sessionMaintenance') {
+        try {
+            const response = await fetch('https://students.cuchd.in/api/heartbeat', {
+                credentials: 'include',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (!response.ok) {
+                console.warn('[CUCHD] Session refresh needed');
+                await injectSessionCookies();
+            }
+        } catch (error) {
+            console.error('[CUCHD] Maintenance error:', error);
+        }
+    }
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (tab.url?.startsWith('https://students.cuchd.in/') &&
+        changeInfo.status === 'complete') {
+        chrome.scripting.executeScript({
+            target: { tabId },
+            files: ['sessionMonitor.js']
+        });
+    }
+});
+
+chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'SESSION_STATE_UPDATE') {
+        console.log('[CUCHD] Session state:', message.state);
+    }
+});

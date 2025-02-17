@@ -4,11 +4,11 @@
     "manifest_version": 3,
     "description": "Auto-login and session management for CUCHD portal",
     "permissions": [
-      "storage",
-      "cookies",
-      "activeTab",
-      "scripting",
-      "tabs"
+        "storage",
+        "cookies",
+        "alarms",
+        "webNavigation",
+        "tabs"
     ],
     "host_permissions": [
         "https://students.cuchd.in/*"
