@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -89,12 +90,12 @@
 
         .btn:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
 
         .btn:active {
             transform: translateY(0);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
         }
 
         .btn-primary {
@@ -165,7 +166,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .loading-icon {
@@ -173,6 +176,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <button class="settings-gear">⚙️</button>
@@ -188,7 +192,7 @@
     <div class="input-group">
         <input type="text" id="uid" class="input" placeholder="🎓 Student ID" autocomplete="username">
     </div>
-    
+
     <div class="input-group">
         <input type="password" id="password" class="input" placeholder="🔑 Password" autocomplete="current-password">
     </div>
@@ -210,4 +214,5 @@
 
     <script src="popup.js"></script>
 </body>
+
 </html>

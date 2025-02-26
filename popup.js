@@ -27,18 +27,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     let [tab] = await chrome.tabs.query({ url });
 
     if (tab) {
-        await chrome.tabs.update(tab.id, { active: true });
+      await chrome.tabs.update(tab.id, { active: true });
     } else {
-        tab = await chrome.tabs.create({ url });
+      tab = await chrome.tabs.create({ url });
     }
 
     setTimeout(() => {
-        chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ["content-script.js"]
-        }).catch(err => console.error("❌ Error injecting script:", err));
-    }, 3000); 
-});
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["content-script.js"]
+      }).catch(err => console.error("❌ Error injecting script:", err));
+    }, 3000);
+  });
 
 
   saveButton.addEventListener('click', async () => {

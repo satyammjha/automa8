@@ -43,6 +43,9 @@ async function handleCaptcha() {
         if (captchaField && result.captcha) {
             captchaField.value = result.captcha;
             showOverlay('✅ CAPTCHA solved! Logging in...');
+            localStorage.setItem("redirectAfterLogin", "true");
+            localStorage.setItem("attemptingLogin", "true"); 
+
             document.getElementById('btnLogin').click();
         } else {
             showOverlay('❌ CAPTCHA solution failed!');
@@ -51,6 +54,24 @@ async function handleCaptcha() {
         showOverlay(`🚨 Error: ${error.message}`);
     }
 }
+
+window.addEventListener("load", function () {
+    if (localStorage.getItem("redirectAfterLogin") === "true") {
+        localStorage.removeItem("redirectAfterLogin");
+
+        if (window.location.href.includes("LandingPage.aspx")) {
+            console.log("Landing Page detected. Redirecting...");
+            window.location.href = "https://students.cuchd.in/StudentHome.aspx";
+        }
+    }
+
+    if (localStorage.getItem("attemptingLogin") === "true" && window.location.href.includes("StudentHome.aspx")) {
+        console.log("✅ Successfully logged in via extension!");
+        localStorage.setItem("loggedInByExtension", "true");
+        localStorage.removeItem("attemptingLogin");
+    }
+});
+
 
 function imageToBlob(imgElement) {
     return new Promise((resolve, reject) => {
